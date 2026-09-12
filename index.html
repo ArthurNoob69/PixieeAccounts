@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#f8fafc] antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pixiee Accounts Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+    <!-- Required for jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 900: '#1e3a8a' } },
+                    boxShadow: { 'glass': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        .page { display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .page.active { display: block; opacity: 1; animation: slideUp 0.4s ease-out forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .glass-input { @apply bg-white border border-slate-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 rounded-lg outline-none transition-all; }
+        
+        .ac-table { width: 100%; border-collapse: collapse; border: 2px solid #94a3b8; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        .ac-table th { background-color: #f1f5f9; color: #1e293b; font-weight: 800; border: 1px solid #94a3b8; border-bottom: 2px solid #94a3b8; padding: 12px 8px; font-size: 0.70rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; position: sticky; top: 0; z-index: 10; }
+        .ac-table td { border: 1px solid #94a3b8 !important; padding: 0; vertical-align: middle; background-color: #ffffff; transition: background-color 0.2s; position: relative; }
+        .border-divider { border-left: 2px solid #64748b !important; }
+        .ac-table tr:hover td { background-color: #f8fafc; }
+        .ac-table td:focus-within { background-color: #eff6ff; box-shadow: inset 0 0 0 2px #3b82f6; z-index: 1; }
+        
+        .ac-input { width: 100%; height: 100%; padding: 12px; background: transparent; outline: none; color: #1e293b; font-size: 0.85rem; min-height: 48px; }
+        .ac-amt-input { width: 100%; height: 100%; padding: 12px 6px; background: transparent; outline: none; color: #1e293b; font-size: 0.85rem; text-align: right; font-family: 'JetBrains Mono', monospace; min-height: 48px; }
+        
+        .modal { transition: opacity 0.2s ease, visibility 0.2s ease; }
+
+        .tooltip .tooltip-text {
+            visibility: hidden; width: max-content; background-color: #1e293b; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 100;
+            bottom: 130%; left: 50%; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; font-weight: bold;
+        }
+        .tooltip:hover .tooltip-text { visibility: visible; opacity: 1; }
+    </style>
+</head>
+<body class="h-full text-slate-800 flex flex-col">
+
+    <!-- Professional Minimalist Dock -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <nav class="bg-white/90 backdrop-blur-xl rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-2 flex items-center gap-2 border border-slate-200/60 transition-all">
+            <button onclick="showPage('main')" class="p-3 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-all group relative">
+                <i data-feather="grid" class="w-5 h-5"></i>
+                <span class="absolute -top-10 bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Hub</span>
+            </button>
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+            <button onclick="showPage('diss-dashboard')" class="p-3 rounded-full flex items-center justify-center text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all group relative">
+                <i data-feather="briefcase" class="w-5 h-5"></i>
+                <span class="absolute -top-10 bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Dissolution</span>
+            </button>
+            <button onclick="showPage('boe-dashboard')" class="p-3 rounded-full flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all group relative">
+                <i data-feather="book-open" class="w-5 h-5"></i>
+                <span class="absolute -top-10 bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">Bills</span>
+            </button>
+            <button onclick="showPage('brs-home')" class="p-3 rounded-full flex items-center justify-center text-slate-500 hover:text-blue-600 hover:bg-blue-50 transition-all group relative">
+                <i data-feather="bar-chart-2" class="w-5 h-5"></i>
+                <span class="absolute -top-10 bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">BRS</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 pb-32 p-4 md:p-8 w-full max-w-[1600px] mx-auto transition-all">
+        
+        <!-- MAIN DASHBOARD -->
+        <div id="page-main" class="page active">
+            <!-- Clean Minimal Header -->
+            <header class="mb-10">
+                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight">Pixiee Accounts</h1>
+                <p class="text-slate-500 mt-2">Your professional workspace for partnership accounts and bank reconciliations.</p>
+            </header>
+
+            <!-- Professional Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Dissolution Card -->
+                <div onclick="showPage('diss-dashboard')" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="bg-emerald-50 w-12 h-12 rounded-xl flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+                            <i data-feather="briefcase" class="w-6 h-6"></i>
+                        </div>
+                        <span class="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-md" id="stat-diss-count">0 Projects</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-1">Dissolution</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">Create and manage Realisation, Capital, and Bank accounts for partnership liquidations.</p>
+                </div>
+
+                <!-- BRS Card -->
+                <div onclick="showPage('brs-home')" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="bg-blue-50 w-12 h-12 rounded-xl flex items-center justify-center text-blue-600 group-hover:scale-105 transition-transform">
+                            <i data-feather="bar-chart-2" class="w-6 h-6"></i>
+                        </div>
+                        <span class="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-md" id="stat-brs-count">0 Statements</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-1">Bank Reconciliation</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">Easily reconcile Cash Book and Pass Book balances with automated calculators.</p>
+                </div>
+
+                <!-- BOE Card -->
+                <div onclick="showPage('boe-dashboard')" class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 transition-all cursor-pointer group">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="bg-indigo-50 w-12 h-12 rounded-xl flex items-center justify-center text-indigo-600 group-hover:scale-105 transition-transform">
+                            <i data-feather="book-open" class="w-6 h-6"></i>
+                        </div>
+                        <span class="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-md">Upcoming</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 mb-1">Bills of Exchange</h3>
+                    <p class="text-slate-500 text-sm leading-relaxed">Manage strict journal entries for Drawer, Drawee, Endorsee and Bank accounts.</p>
+                </div>
+                
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- DISSOLUTION MODULE -->
+        <!-- ============================================== -->
+        
+        <div id="page-diss-dashboard" class="page">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                <div><h1 class="text-3xl font-bold text-slate-900">Dissolution Projects</h1><p class="text-slate-500 mt-1">Manage partnership liquidations</p></div>
+                <button onclick="createNewDiss()" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2"><i data-feather="plus" class="w-5 h-5"></i> New Project</button>
+            </div>
+            
+            <div class="bg-white rounded-3xl shadow-glass border border-slate-200 p-6 sm:p-8 min-h-[500px]">
+                <div class="relative max-w-md mb-8">
+                    <i data-feather="search" class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="search" id="search-diss" placeholder="Search projects..." class="glass-input w-full pl-12 p-3.5 text-sm font-medium">
+                </div>
+                <div id="diss-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+                <div id="empty-diss" class="hidden flex flex-col items-center justify-center py-20 text-slate-400">
+                    <div class="bg-slate-50 p-8 rounded-full mb-5 ring-1 ring-slate-200"><i data-feather="briefcase" class="w-10 h-10"></i></div>
+                    <p class="font-bold text-lg text-slate-500">No projects found.</p>
+                    <p class="text-sm mt-1">Create one to start managing liquidations.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-diss-editor" class="page">
+            <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-center gap-4 w-full lg:w-auto">
+                    <button onclick="showPage('diss-dashboard')" class="bg-slate-100 hover:bg-slate-200 p-2.5 rounded-xl transition-colors"><i data-feather="arrow-left" class="w-5 h-5 text-slate-700"></i></button>
+                    <div class="flex-1">
+                        <input type="text" id="diss-title-input" class="text-xl sm:text-2xl font-bold text-slate-900 bg-transparent outline-none border-b-2 border-transparent focus:border-emerald-500 transition-colors w-full px-1" onchange="updateDissTitle(this.value)">
+                        <p class="text-xs text-slate-500 ml-1 font-mono mt-1" id="diss-partners-lbl">Partners: </p>
+                    </div>
+                </div>
+                <div class="flex gap-3 w-full lg:w-auto">
+                    <button onclick="exportDissPdf()" class="w-full lg:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"><i data-feather="download" class="w-4 h-4"></i> Export PDF</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-glass border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-200px)] md:h-[calc(100vh-160px)]">
+                <div class="bg-slate-50 border-b border-slate-200 px-3 pt-3 flex items-end gap-2 overflow-x-auto no-scrollbar" id="diss-tabs"></div>
+                <div class="flex-1 overflow-auto bg-[#f8fafc] p-2 sm:p-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-300 overflow-hidden">
+                        <div class="overflow-x-auto w-full pb-2 p-2 sm:p-4">
+                            <div id="diss-ledger-container" class="min-w-[900px]"></div>
+                        </div>
+                        <div class="p-4 bg-slate-50 border-t border-slate-300 flex justify-center">
+                            <button onclick="addDissRow()" class="text-sm font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 py-2 px-6 rounded-lg transition-colors shadow-sm flex items-center gap-2"><i data-feather="plus" class="w-4 h-4"></i> Add Blank Row</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- ============================================== -->
+        <!-- BRS MODULE -->
+        <!-- ============================================== -->
+        <div id="page-brs-home" class="page">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                <div><h1 class="text-3xl font-bold text-slate-900">Bank Reconciliation</h1><p class="text-slate-500 mt-1">Match Cash Book & Pass Book</p></div>
+                <button onclick="createNewBrs()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2"><i data-feather="plus" class="w-5 h-5"></i> New BRS</button>
+            </div>
+            
+            <div class="bg-white rounded-3xl shadow-glass border border-slate-200 p-6 sm:p-8 min-h-[500px]">
+                <div class="relative max-w-md mb-8">
+                    <i data-feather="search" class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="search" id="search-brs" placeholder="Search statements..." class="glass-input w-full pl-12 p-3.5 text-sm font-medium">
+                </div>
+                <div id="brs-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+        </div>
+
+        <div id="page-brs-editor" class="page">
+            <header class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-center gap-4">
+                    <button onclick="showPage('brs-home')" class="bg-slate-100 hover:bg-slate-200 p-2.5 rounded-xl transition-colors"><i data-feather="arrow-left" class="w-5 h-5 text-slate-700"></i></button>
+                    <div><h1 class="text-2xl font-bold text-slate-900">Edit Statement</h1></div>
+                </div>
+                <button onclick="saveBrs()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-8 rounded-xl shadow-lg shadow-blue-200">Save</button>
+            </header>
+            
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-glass border border-slate-200 space-y-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Title</label><input type="text" id="brs-title" class="glass-input w-full p-3 font-medium"></div>
+                    <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Date</label><input type="date" id="brs-date" class="glass-input w-full p-3 font-medium"></div>
+                </div>
+                
+                <div class="p-5 bg-slate-50 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Starting Balance Type</label>
+                        <select id="brs-start-type" class="glass-input w-full p-3 bg-white font-medium" onchange="calculateBrs()"><option>Cash Book</option><option>Pass Book</option></select>
+                    </div>
+                    <div><label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">Amount</label>
+                        <input type="number" id="brs-start-bal" class="glass-input w-full p-3 font-mono text-lg text-right font-bold text-blue-600" value="0" oninput="calculateBrs()">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="border border-green-200 rounded-2xl overflow-hidden shadow-sm">
+                        <div class="bg-green-50 p-4 flex justify-between items-center border-b border-green-200">
+                            <h3 class="font-bold text-green-800 text-lg">Add (+)</h3>
+                            <button onclick="addBrsRow('adds')" class="text-sm font-bold bg-white border border-green-300 text-green-700 px-3 py-1.5 rounded-lg shadow-sm hover:bg-green-100">+ Add Row</button>
+                        </div>
+                        <div id="brs-add-container" class="p-4 space-y-3 bg-white min-h-[150px]"></div>
+                    </div>
+                    <div class="border border-red-200 rounded-2xl overflow-hidden shadow-sm">
+                        <div class="bg-red-50 p-4 flex justify-between items-center border-b border-red-200">
+                            <h3 class="font-bold text-red-800 text-lg">Less (-)</h3>
+                            <button onclick="addBrsRow('less')" class="text-sm font-bold bg-white border border-red-300 text-red-700 px-3 py-1.5 rounded-lg shadow-sm hover:bg-red-100">+ Add Row</button>
+                        </div>
+                        <div id="brs-less-container" class="p-4 space-y-3 bg-white min-h-[150px]"></div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 text-white p-6 sm:p-8 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center shadow-2xl relative overflow-hidden">
+                    <div class="absolute inset-0 bg-blue-500 opacity-10 filter blur-3xl"></div>
+                    <span class="font-bold text-lg sm:text-xl text-slate-300 relative z-10" id="brs-end-label">Closing Balance</span>
+                    <span class="font-mono text-4xl font-extrabold text-white mt-2 sm:mt-0 relative z-10" id="brs-end-bal">0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- BOE MODULE (Basic Placeholder) -->
+        <!-- ============================================== -->
+        <div id="page-boe-dashboard" class="page">
+            <div class="flex justify-between items-center mb-8">
+                <div><h1 class="text-3xl font-bold text-slate-900">Bills of Exchange</h1><p class="text-slate-500 mt-1">Manage Journal Entries</p></div>
+            </div>
+             <div class="bg-white rounded-3xl shadow-glass border border-slate-200 p-16 text-center text-slate-500">
+                 <div class="bg-indigo-50 p-6 rounded-full inline-block mb-6"><i data-feather="book-open" class="w-12 h-12 text-indigo-300"></i></div>
+                 <h3 class="text-xl font-bold text-slate-800 mb-2">Bills Module Active</h3>
+                 <p class="max-w-md mx-auto">The backend logic for Bills of Exchange is intact. The UI upgrade for this specific module is scheduled for the next release.</p>
+             </div>
+        </div>
+
+    </main>
+
+    <!-- Floating Calculator -->
+    <button onclick="toggleCalculator()" class="fixed bottom-24 md:bottom-8 right-6 bg-slate-900 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:scale-105 transition-all z-50"><i data-feather="cpu" class="w-6 h-6"></i></button>
+    
+    <div id="calculator-modal" class="modal fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60] opacity-0 invisible" onclick="if(event.target===this) toggleCalculator()">
+        <div class="bg-white rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl w-full sm:w-[340px] p-6 transform transition-transform duration-300 translate-y-full sm:translate-y-0" id="calc-content">
+            <div class="flex justify-between items-center mb-5"><h3 class="text-xl font-bold text-slate-900">Calculator</h3><button onclick="toggleCalculator()" class="text-slate-400 bg-slate-100 p-2 rounded-full hover:bg-slate-200 hover:text-slate-700 transition-colors"><i data-feather="x" class="w-5 h-5"></i></button></div>
+            <div id="calc-display" class="bg-slate-900 text-white text-right text-4xl font-mono p-5 rounded-2xl mb-6 h-24 flex items-end justify-end overflow-hidden shadow-inner">0</div>
+            <div class="grid grid-cols-4 gap-3">
+                <button class="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold p-4 rounded-xl text-xl transition-colors" onclick="calcInput('C')">C</button>
+                <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-4 rounded-xl text-xl transition-colors" onclick="calcInput('(')">(</button>
+                <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold p-4 rounded-xl text-xl transition-colors" onclick="calcInput(')')">)</button>
+                <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold p-4 rounded-xl text-xl transition-colors" onclick="calcInput('/')">/</button>
+                
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all" onclick="calcInput('7')">7</button>
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all" onclick="calcInput('8')">8</button>
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all" onclick="calcInput('9')">9</button>
+                <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold p-4 rounded-xl text-xl transition-colors" onclick="calcInput('*')">×</button>
+                
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all" onclick="calcInput('4')">4</button>
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all" onclick="calcInput('5')">5</button>
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all" onclick="calcInput('6')">6</button>
+                <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold p-4 rounded-xl text-xl transition-colors" onclick="calcInput('-')">-</button>
+                
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all" onclick="calcInput('1')">1</button>
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all" onclick="calcInput('2')">2</button>
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all" onclick="calcInput('3')">3</button>
+                <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold p-4 rounded-xl text-xl transition-colors" onclick="calcInput('+')">+</button>
+                
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all col-span-2" onclick="calcInput('0')">0</button>
+                <button class="bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-bold p-4 rounded-xl text-2xl shadow-sm transition-all" onclick="calcInput('.')">.</button>
+                <button class="bg-brand-600 hover:bg-brand-700 text-white font-bold p-4 rounded-xl text-2xl shadow-lg shadow-brand-500/30 transition-all" onclick="calcInput('=')">=</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="new-diss-modal" class="modal fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[70] opacity-0 invisible">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 m-4 transform scale-95 transition-transform duration-200 border border-slate-100" id="new-diss-box">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="bg-emerald-100 p-3 rounded-xl"><i data-feather="briefcase" class="w-6 h-6 text-emerald-600"></i></div>
+                <h3 class="text-2xl font-bold text-slate-900">New Project</h3>
+            </div>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Project Title</label>
+                    <input type="text" id="nd-title" class="glass-input w-full p-3.5 font-medium" placeholder="e.g. M/s A & B Liquidation" value="Untitled Project">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">Partners (Comma Separated)</label>
+                    <input type="text" id="nd-partners" class="glass-input w-full p-3.5 font-medium" placeholder="e.g. Ram, Shyam, Mohan" value="A, B">
+                </div>
+            </div>
+            <div class="mt-8 flex justify-end gap-3">
+                <button onclick="closeDissModal()" class="px-5 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-colors">Cancel</button>
+                <button onclick="submitNewDiss()" class="px-7 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 transition-all">Create Project</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Core Navigation
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); });
+            document.getElementById('page-' + id).classList.add('active');
+            
+            if(id === 'main') {
+                const dc = document.getElementById('stat-diss-count');
+                const bc = document.getElementById('stat-brs-count');
+                if(dc && typeof dissProjects !== 'undefined') dc.textContent = dissProjects.length + ' Projects';
+                if(bc && typeof brsData !== 'undefined') bc.textContent = brsData.length + ' Statements';
+            }
+            if(id === 'diss-dashboard') loadDissList();
+            if(id === 'brs-home') loadBrsList();
+            feather.replace();
+        }
+
+
+
+        // ==========================================
+        // DISSOLUTION MODULE
+        // ==========================================
+        const DISS_KEY = 'acc_diss_v3'; // upgraded key for new data schema
+        let dissProjects = JSON.parse(localStorage.getItem(DISS_KEY) || '[]');
+        let currDiss = null;
+        let activeAccIdx = 0;
+
+        function saveDiss() { localStorage.setItem(DISS_KEY, JSON.stringify(dissProjects)); }
+        
+        function loadDissList() {
+            const list = document.getElementById('diss-list');
+            list.innerHTML = '';
+            if(dissProjects.length === 0) {
+                document.getElementById('empty-diss').classList.remove('hidden');
+            } else {
+                document.getElementById('empty-diss').classList.add('hidden');
+                dissProjects.forEach(p => {
+                    list.innerHTML += `
+                        <div class="bg-white border border-slate-200 rounded-2xl p-6 hover:border-emerald-400 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group" onclick="openDiss('${p.id}')">
+                            <div class="flex justify-between items-start mb-3">
+                                <h4 class="font-bold text-slate-900 text-xl group-hover:text-emerald-700 transition-colors">${p.title}</h4>
+                                <button onclick="event.stopPropagation(); deleteDiss('${p.id}')" class="text-slate-300 hover:text-red-500 p-1 bg-white rounded-md"><i data-feather="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                            <p class="text-sm text-slate-500 mb-4 font-medium"><i data-feather="users" class="w-4 h-4 inline mr-1 text-slate-400"></i> ${p.partners.join(', ')}</p>
+                            <div class="flex gap-2">
+                                <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded font-bold uppercase tracking-wider">Realisation</span>
+                                <span class="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded font-bold uppercase tracking-wider">Capital</span>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            feather.replace();
+        }
+
+        function createNewDiss() {
+            document.getElementById('new-diss-modal').style.visibility = 'visible';
+            document.getElementById('new-diss-modal').style.opacity = '1';
+            document.getElementById('new-diss-box').classList.remove('scale-95');
+            document.getElementById('new-diss-box').classList.add('scale-100');
+        }
+        function closeDissModal() {
+            document.getElementById('new-diss-modal').style.opacity = '0';
+            setTimeout(() => { document.getElementById('new-diss-modal').style.visibility = 'hidden'; }, 200);
+            document.getElementById('new-diss-box').classList.add('scale-95');
+            document.getElementById('new-diss-box').classList.remove('scale-100');
+        }
+
+        function submitNewDiss() {
+            let t = document.getElementById('nd-title').value || 'Untitled Project';
+            let pStr = document.getElementById('nd-partners').value;
+            let parts = pStr.split(',').map(x=>x.trim()).filter(x=>x);
+            if(parts.length===0) parts = ["Partner 1", "Partner 2"];
+
+            // Added 'd' for details inner column amount
+            const initRows = Array(15).fill(null).map(()=>({p:'', d:'', a:''}));
+            const capInitRows = Array(10).fill(null).map(()=>({p:'', amts: Array(parts.length).fill('')}));
+
+            currDiss = {
+                id: Date.now().toString(),
+                title: t,
+                partners: parts,
+                accounts: [
+                    { name: 'Realisation A/c', type: 'standard', dr: JSON.parse(JSON.stringify(initRows)), cr: JSON.parse(JSON.stringify(initRows)) },
+                    { name: 'Partners Capital', type: 'capital', dr: JSON.parse(JSON.stringify(capInitRows)), cr: JSON.parse(JSON.stringify(capInitRows)) },
+                    { name: 'Bank A/c', type: 'standard', dr: JSON.parse(JSON.stringify(initRows)), cr: JSON.parse(JSON.stringify(initRows)) }
+                ]
+            };
+            dissProjects.push(currDiss);
+            saveDiss();
+            closeDissModal();
+            openDiss(currDiss.id);
+        }
+
+        function deleteDiss(id) {
+            if(confirm('Delete this project forever?')) {
+                dissProjects = dissProjects.filter(x => x.id !== id);
+                saveDiss(); loadDissList();
+            }
+        }
+
+        function openDiss(id) {
+            currDiss = dissProjects.find(x => x.id === id);
+            
+            // Migrate v2 data to v3 (add 'd' field for older projects if they exist)
+            currDiss.accounts.forEach(acc => {
+                if(acc.type === 'standard') {
+                    acc.dr.forEach(r => { if(r.d === undefined) r.d = ''; });
+                    acc.cr.forEach(r => { if(r.d === undefined) r.d = ''; });
+                }
+            });
+
+            activeAccIdx = 0;
+            document.getElementById('diss-title-input').value = currDiss.title;
+            document.getElementById('diss-partners-lbl').textContent = "Partners: " + currDiss.partners.join(', ');
+            showPage('diss-editor');
+            renderDissTabs();
+            renderDissLedger();
+        }
+
+        function updateDissTitle(val) {
+            currDiss.title = val; saveDiss();
+        }
+
+        function renderDissTabs() {
+            const cont = document.getElementById('diss-tabs');
+            cont.innerHTML = '';
+            currDiss.accounts.forEach((acc, i) => {
+                const active = i === activeAccIdx;
+                cont.innerHTML += `
+                    <button onclick="switchDissTab(${i})" class="px-6 py-3 rounded-t-xl text-sm font-bold transition-all border-x border-t ${active ? 'bg-white text-emerald-700 border-slate-300 border-b-white shadow-[0_-4px_6px_rgba(0,0,0,0.02)] relative z-10 top-[1px]' : 'bg-slate-100 text-slate-500 border-transparent hover:bg-slate-200'}">
+                        ${acc.name}
+                    </button>
+                `;
+            });
+            cont.innerHTML += `<button onclick="addCustomAcc()" class="px-4 py-2 text-slate-400 hover:text-emerald-600 ml-1 transition-colors"><i data-feather="plus-circle" class="w-5 h-5"></i></button>`;
+            feather.replace();
+        }
+
+        function switchDissTab(i) {
+            activeAccIdx = i;
+            renderDissTabs();
+            renderDissLedger();
+        }
+        
+        function addCustomAcc() {
+            let n = prompt("Enter Account Name (e.g. Partner's Loan A/c)");
+            if(n) {
+                const initRows = Array(15).fill(null).map(()=>({p:'', d:'', a:''}));
+                currDiss.accounts.push({ name: n, type: 'standard', dr: initRows, cr: JSON.parse(JSON.stringify(initRows)) });
+                saveDiss(); renderDissTabs(); switchDissTab(currDiss.accounts.length-1);
+            }
+        }
+
+        function addDissRow() {
+            const acc = currDiss.accounts[activeAccIdx];
+            if(acc.type === 'standard') {
+                acc.dr.push({p:'', d:'', a:''}); acc.cr.push({p:'', d:'', a:''});
+            } else {
+                acc.dr.push({p:'', amts: Array(currDiss.partners.length).fill('')});
+                acc.cr.push({p:'', amts: Array(currDiss.partners.length).fill('')});
+            }
+            saveDiss(); renderDissLedger();
+            const cont = document.getElementById('diss-ledger-container');
+            cont.scrollTop = cont.scrollHeight;
+        }
+
+        // Export Function
+        function exportDissPdf() {
+            if(!currDiss) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape');
+            
+            doc.setFontSize(22);
+            doc.setFont(undefined, 'bold');
+            doc.text(currDiss.title || 'Dissolution Project', 148, 20, { align: 'center' });
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'normal');
+            doc.text(`Partners: ${currDiss.partners.join(', ')}`, 148, 28, { align: 'center' });
+            
+            let yPos = 40;
+            
+            currDiss.accounts.forEach((acc, index) => {
+                if(yPos > 170) { doc.addPage(); yPos = 20; }
+                else if (index > 0) yPos += 15;
+                
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                // Center the Account Name
+                doc.text(acc.name, 148, yPos, { align: 'center' });
+                yPos += 8;
+                
+                let head = [];
+                let body = [];
+                
+                if(acc.type === 'standard') {
+                    // Added Details column for inner entries
+                    head = [['DR Particulars', 'Details', 'Amount', 'CR Particulars', 'Details', 'Amount']];
+                    let maxRows = Math.max(acc.dr.length, acc.cr.length);
+                    for(let i=0; i<maxRows; i++) {
+                        let drP = (acc.dr[i] && acc.dr[i].p) ? acc.dr[i].p : '';
+                        let drD = (acc.dr[i] && acc.dr[i].d) ? parseFloat(acc.dr[i].d).toFixed(2) : '';
+                        let drA = (acc.dr[i] && acc.dr[i].a) ? parseFloat(acc.dr[i].a).toFixed(2) : '';
+                        
+                        let crP = (acc.cr[i] && acc.cr[i].p) ? acc.cr[i].p : '';
+                        let crD = (acc.cr[i] && acc.cr[i].d) ? parseFloat(acc.cr[i].d).toFixed(2) : '';
+                        let crA = (acc.cr[i] && acc.cr[i].a) ? parseFloat(acc.cr[i].a).toFixed(2) : '';
+                        
+                        if(drP || drD || drA || crP || crD || crA) body.push([drP, drD, drA, crP, crD, crA]);
+                    }
+                    let tDr = acc.dr.reduce((sum, item) => sum + (parseFloat(item.a)||0), 0).toFixed(2);
+                    let tCr = acc.cr.reduce((sum, item) => sum + (parseFloat(item.a)||0), 0).toFixed(2);
+                    body.push(['TOTAL', '', tDr, 'TOTAL', '', tCr]);
+                    
+                    doc.autoTable({
+                        startY: yPos, head: head, body: body, theme: 'grid',
+                        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+                        columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } },
+                        styles: { cellPadding: 3, fontSize: 10 },
+                        didParseCell: function(data) {
+                            if (data.row.index === body.length - 1) {
+                                data.cell.styles.fontStyle = 'bold';
+                                data.cell.styles.fillColor = [241, 245, 249];
+                            }
+                        }
+                    });
+                } else {
+                    let headNames = ['DR Particulars', ...currDiss.partners.map(p => p+' (Dr)'), 'CR Particulars', ...currDiss.partners.map(p => p+' (Cr)')];
+                    head = [headNames];
+                    
+                    let maxRows = Math.max(acc.dr.length, acc.cr.length);
+                    for(let i=0; i<maxRows; i++) {
+                        let row = [];
+                        row.push((acc.dr[i] && acc.dr[i].p) ? acc.dr[i].p : '');
+                        currDiss.partners.forEach((_, pIdx) => {
+                            row.push((acc.dr[i] && acc.dr[i].amts && acc.dr[i].amts[pIdx]) ? parseFloat(acc.dr[i].amts[pIdx]).toFixed(2) : '');
+                        });
+                        row.push((acc.cr[i] && acc.cr[i].p) ? acc.cr[i].p : '');
+                        currDiss.partners.forEach((_, pIdx) => {
+                            row.push((acc.cr[i] && acc.cr[i].amts && acc.cr[i].amts[pIdx]) ? parseFloat(acc.cr[i].amts[pIdx]).toFixed(2) : '');
+                        });
+                        
+                        if(row.some(val => val !== '')) body.push(row);
+                    }
+                    
+                    let totalRow = ['TOTAL'];
+                    currDiss.partners.forEach((_, pIdx) => {
+                        let t = acc.dr.reduce((sum, item) => sum + (parseFloat(item.amts[pIdx])||0), 0).toFixed(2);
+                        totalRow.push(t);
+                    });
+                    totalRow.push('TOTAL');
+                    currDiss.partners.forEach((_, pIdx) => {
+                        let t = acc.cr.reduce((sum, item) => sum + (parseFloat(item.amts[pIdx])||0), 0).toFixed(2);
+                        totalRow.push(t);
+                    });
+                    body.push(totalRow);
+                    
+                    doc.autoTable({
+                        startY: yPos, head: head, body: body, theme: 'grid',
+                        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' },
+                        styles: { cellPadding: 3, fontSize: 10 },
+                        didParseCell: function(data) {
+                            if (data.row.index === body.length - 1) {
+                                data.cell.styles.fontStyle = 'bold';
+                                data.cell.styles.fillColor = [241, 245, 249];
+                            }
+                            if(data.column.index !== 0 && data.column.index !== currDiss.partners.length + 1) {
+                                data.cell.styles.halign = 'right';
+                            }
+                        }
+                    });
+                }
+                yPos = doc.lastAutoTable.finalY + 10;
+            });
+            
+            doc.save(`Pixiee_Hub_${currDiss.title.replace(/\s/g, '_')}_Dissolution.pdf`);
+        }
+
+        // Ledger Rendering
+        function renderDissLedger() {
+            const acc = currDiss.accounts[activeAccIdx];
+            const cont = document.getElementById('diss-ledger-container');
+            let html = '<table class="ac-table">';
+            
+            if(acc.type === 'standard') {
+                // Added Details inner column
+                html += `
+                    <thead>
+                        <tr><th colspan="3">DR</th><th colspan="3" class="border-divider">CR</th></tr>
+                        <tr><th class="w-[30%]">Particulars</th><th class="w-[10%] min-w-[80px]">Details (₹)</th><th class="w-[10%] min-w-[80px]">Amount (₹)</th><th class="w-[30%] border-divider">Particulars</th><th class="w-[10%] min-w-[80px]">Details (₹)</th><th class="w-[10%] min-w-[80px]">Amount (₹)</th></tr>
+                    </thead>
+                    <tbody>
+                `;
+                const rows = Math.max(acc.dr.length, acc.cr.length);
+                for(let i=0; i<rows; i++) {
+                    const dr = acc.dr[i] || {p:'', d:'', a:''}; const cr = acc.cr[i] || {p:'', d:'', a:''};
+                    html += `<tr>
+                        <td><input class="ac-input font-medium" value="${dr.p}" onchange="updDiss('dr',${i},'p',this.value)"></td>
+                        <td><input type="number" class="ac-amt-input !text-slate-500" value="${dr.d}" onchange="updDiss('dr',${i},'d',this.value)"></td>
+                        <td><input type="number" class="ac-amt-input font-bold" value="${dr.a}" onchange="updDiss('dr',${i},'a',this.value)" id="dr-a-${i}"></td>
+                        <td class="border-divider"><input class="ac-input font-medium" value="${cr.p}" onchange="updDiss('cr',${i},'p',this.value)"></td>
+                        <td><input type="number" class="ac-amt-input !text-slate-500" value="${cr.d}" onchange="updDiss('cr',${i},'d',this.value)"></td>
+                        <td><input type="number" class="ac-amt-input font-bold" value="${cr.a}" onchange="updDiss('cr',${i},'a',this.value)" id="cr-a-${i}"></td>
+                    </tr>`;
+                }
+                html += `<tr class="bg-slate-100 font-bold text-slate-900 text-sm border-t-2 border-t-slate-400">
+                    <td colspan="2" class="p-4 text-right uppercase tracking-wider">Total</td>
+                    <td class="p-4 text-right font-mono border-b-[6px] border-b-slate-800 border-double text-lg" id="tot-dr">0.00</td>
+                    <td colspan="2" class="p-4 text-right uppercase tracking-wider border-divider">Total</td>
+                    <td class="p-4 text-right font-mono border-b-[6px] border-b-slate-800 border-double text-lg" id="tot-cr">0.00</td>
+                </tr></tbody>`;
+            } 
+            else if(acc.type === 'capital') {
+                const p = currDiss.partners;
+                const pHeaders = p.map(x => `<th class="w-28">${x} (₹)</th>`).join('');
+                html += `
+                    <thead>
+                        <tr><th colspan="${1+p.length}">DR</th><th colspan="${1+p.length}" class="border-divider">CR</th></tr>
+                        <tr><th class="w-64">Particulars</th>${pHeaders}<th class="w-64 border-divider">Particulars</th>${pHeaders}</tr>
+                    </thead>
+                    <tbody>
+                `;
+                const rows = Math.max(acc.dr.length, acc.cr.length);
+                for(let i=0; i<rows; i++) {
+                    const dr = acc.dr[i] || {p:'', amts:Array(p.length).fill('')}; 
+                    const cr = acc.cr[i] || {p:'', amts:Array(p.length).fill('')};
+                    html += `<tr><td><input class="ac-input font-medium" value="${dr.p}" onchange="updDissCap('dr',${i},'p',0,this.value)"></td>`;
+                    p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${dr.amts[pIdx]||''}" onchange="updDissCap('dr',${i},'a',${pIdx},this.value)" id="dr-cap-${i}-${pIdx}"></td>`; });
+                    html += `<td class="border-divider"><input class="ac-input font-medium" value="${cr.p}" onchange="updDissCap('cr',${i},'p',0,this.value)"></td>`;
+                    p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${cr.amts[pIdx]||''}" onchange="updDissCap('cr',${i},'a',${pIdx},this.value)" id="cr-cap-${i}-${pIdx}"></td>`; });
+                    html += `</tr>`;
+                }
+                html += `<tr class="bg-slate-100 font-bold text-slate-900 text-sm border-t-2 border-t-slate-400"><td class="p-4 text-right uppercase tracking-wider">Total</td>`;
+                p.forEach((_, pIdx) => { html += `<td class="p-4 text-right font-mono border-b-[6px] border-b-slate-800 border-double text-lg" id="tot-dr-cap-${pIdx}">0.00</td>`; });
+                html += `<td class="p-4 text-right uppercase tracking-wider border-divider">Total</td>`;
+                p.forEach((_, pIdx) => { html += `<td class="p-4 text-right font-mono border-b-[6px] border-b-slate-800 border-double text-lg" id="tot-cr-cap-${pIdx}">0.00</td>`; });
+                html += `</tr></tbody>`;
+            }
+            html += '</table>';
+            cont.innerHTML = html;
+            calcTotals();
+        }
+
+        function updDiss(side, r, f, v) { currDiss.accounts[activeAccIdx][side][r][f] = v; saveDiss(); if(f === 'a') calcTotals(); }
+        function updDissCap(side, r, f, pIdx, v) {
+            if(f === 'p') currDiss.accounts[activeAccIdx][side][r].p = v; else currDiss.accounts[activeAccIdx][side][r].amts[pIdx] = v;
+            saveDiss(); if(f === 'a') calcTotals();
+        }
+
+        function calcTotals() {
+            const acc = currDiss.accounts[activeAccIdx];
+            if(acc.type === 'standard') {
+                let dr = 0, cr = 0;
+                acc.dr.forEach(x => dr += parseFloat(x.a)||0);
+                acc.cr.forEach(x => cr += parseFloat(x.a)||0);
+                document.getElementById('tot-dr').textContent = dr.toFixed(2);
+                document.getElementById('tot-cr').textContent = cr.toFixed(2);
+            } else {
+                currDiss.partners.forEach((_, pIdx) => {
+                    let dr = 0, cr = 0;
+                    acc.dr.forEach(x => dr += parseFloat(x.amts[pIdx])||0);
+                    acc.cr.forEach(x => cr += parseFloat(x.amts[pIdx])||0);
+                    document.getElementById(`tot-dr-cap-${pIdx}`).textContent = dr.toFixed(2);
+                    document.getElementById(`tot-cr-cap-${pIdx}`).textContent = cr.toFixed(2);
+                });
+            }
+        }
+
+        // ==========================================
+        // BRS MODULE 
+        // ==========================================
+        let brsData = JSON.parse(localStorage.getItem('brs_data_v6') || '[]');
+        let currentBrs = null;
+
+        function loadBrsList() {
+            const list = document.getElementById('brs-list');
+            list.innerHTML = '';
+            brsData.forEach(b => {
+                list.innerHTML += `
+                    <div class="bg-white border border-slate-200 rounded-2xl p-6 hover:border-blue-400 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group" onclick="openBrs('${b.id}')">
+                        <div class="flex justify-between items-start mb-3">
+                            <h4 class="font-bold text-slate-900 text-xl group-hover:text-blue-700 transition-colors">${b.title}</h4>
+                            <button onclick="event.stopPropagation(); deleteBrs('${b.id}')" class="text-slate-300 hover:text-red-500 bg-white p-1 rounded-md"><i data-feather="trash-2" class="w-4 h-4"></i></button>
+                        </div>
+                        <p class="text-sm font-medium text-slate-500"><i data-feather="calendar" class="w-4 h-4 inline mr-1 text-slate-400"></i> ${b.date}</p>
+                    </div>
+                `;
+            });
+            feather.replace();
+        }
+
+        function createNewBrs() {
+            currentBrs = { id: Date.now().toString(), title: 'New Statement', date: new Date().toISOString().split('T')[0], startType: 'Cash Book', startBal: 0, adds: [], less: [] };
+            openBrsEditor();
+        }
+        function openBrs(id) { currentBrs = brsData.find(x => x.id === id); openBrsEditor(); }
+        function deleteBrs(id) { if(confirm('Delete statement?')) { brsData = brsData.filter(x => x.id !== id); localStorage.setItem('brs_data_v6', JSON.stringify(brsData)); loadBrsList(); } }
+
+        function openBrsEditor() {
+            document.getElementById('brs-title').value = currentBrs.title;
+            document.getElementById('brs-date').value = currentBrs.date;
+            document.getElementById('brs-start-type').value = currentBrs.startType;
+            document.getElementById('brs-start-bal').value = currentBrs.startBal;
+            renderBrsRows();
+            showPage('brs-editor');
+        }
+
+        function renderBrsRows() {
+            ['adds','less'].forEach(type => {
+                const c = document.getElementById(type==='adds' ? 'brs-add-container' : 'brs-less-container');
+                c.innerHTML = '';
+                currentBrs[type].forEach((item, i) => {
+                    c.innerHTML += `
+                        <div class="flex gap-2 animate-[fadeIn_0.2s_ease-out]">
+                            <input list="brs-particulars" class="glass-input flex-1 p-2 text-sm font-medium" value="${item.txt}" oninput="currentBrs['${type}'][${i}].txt=this.value">
+                            <input type="number" class="glass-input w-28 p-2 text-sm text-right font-mono" value="${item.amt}" oninput="currentBrs['${type}'][${i}].amt=this.value; calculateBrs()">
+                            <button onclick="currentBrs['${type}'].splice(${i},1); renderBrsRows(); calculateBrs();" class="text-slate-300 hover:text-red-500"><i data-feather="x" class="w-5 h-5"></i></button>
+                        </div>
+                    `;
+                });
+            });
+            feather.replace(); calculateBrs();
+        }
+
+        function addBrsRow(type) { currentBrs[type].push({txt:'', amt:''}); renderBrsRows(); }
+
+        function calculateBrs() {
+            currentBrs.title = document.getElementById('brs-title').value;
+            currentBrs.date = document.getElementById('brs-date').value;
+            currentBrs.startType = document.getElementById('brs-start-type').value;
+            currentBrs.startBal = parseFloat(document.getElementById('brs-start-bal').value) || 0;
+            
+            let add = currentBrs.adds.reduce((sum, item) => sum + (parseFloat(item.amt) || 0), 0);
+            let less = currentBrs.less.reduce((sum, item) => sum + (parseFloat(item.amt) || 0), 0);
+            let end = currentBrs.startBal + add - less;
+            
+            document.getElementById('brs-end-label').textContent = `Balance as per ${currentBrs.startType === 'Cash Book' ? 'Pass Book' : 'Cash Book'}`;
+            document.getElementById('brs-end-bal').textContent = end.toFixed(2);
+        }
+
+        function saveBrs() {
+            const idx = brsData.findIndex(x => x.id === currentBrs.id);
+            if(idx > -1) brsData[idx] = currentBrs; else brsData.push(currentBrs);
+            localStorage.setItem('brs_data_v6', JSON.stringify(brsData));
+            showPage('brs-home');
+        }
+
+        // ==========================================
+        // CALCULATOR 
+        // ==========================================
+        const calcModal = document.getElementById('calculator-modal');
+        const calcContent = document.getElementById('calc-content');
+        let calcVal = '0';
+        
+        function toggleCalculator() {
+            const isVisible = calcModal.style.visibility === 'visible';
+            if(isVisible) {
+                calcModal.style.opacity = '0';
+                calcModal.style.visibility = 'hidden';
+                calcContent.classList.remove('translate-y-0');
+                calcContent.classList.add('translate-y-full', 'sm:translate-y-4');
+            } else {
+                calcModal.style.visibility = 'visible';
+                calcModal.style.opacity = '1';
+                calcContent.classList.remove('translate-y-full', 'sm:translate-y-4');
+                calcContent.classList.add('translate-y-0');
+            }
+        }
+
+        function calcInput(key) {
+            const disp = document.getElementById('calc-display');
+            if(key === 'C') calcVal = '0';
+            else if(key === '=') { try { calcVal = eval(calcVal).toString(); } catch { calcVal = 'Error'; } }
+            else { if(calcVal === '0' && !['/','*','+','-','.'].includes(key)) calcVal = key; else calcVal += key; }
+            disp.textContent = calcVal;
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => { 
+            feather.replace(); 
+            showPage('main'); // call to populate stats on load
+        });
+    </script>
+</body>
+</html>
