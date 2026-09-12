@@ -922,14 +922,9 @@
                 });
 
                 const getShadow = (state, colIndex) => {
-                    if (!state || colIndex === 2) return '';
-                    let color = '#64748b'; // slate-500
-                    let shadows = [];
-                    if (state === 'start') shadows.push(`inset 0 2px 0 0 ${color}`);
-                    if (state === 'end') shadows.push(`inset 0 -2px 0 0 ${color}`);
-                    if (colIndex === 0) shadows.push(`inset 2px 0 0 0 ${color}`);
-                    if (colIndex === 1) shadows.push(`inset -2px 0 0 0 ${color}`);
-                    return shadows.length ? `style="box-shadow: ${shadows.join(', ')}; z-index: 5; position: relative;"` : '';
+                    if (!state) return '';
+                    // Very subtle background tint (slate-50) for the whole group, including Amount
+                    return `style="background-color: #f8fafc;"`;
                 };
 
                 html += `
