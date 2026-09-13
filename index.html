@@ -1374,8 +1374,21 @@
         );
 
         // Init
-        document.addEventListener('DOMContentLoaded', () => {
-            feather.replace();
+        document.addEventListener('DOMContentLoaded', () => { 
+            // Handle custom URL routing for PDF share links
+            const path = window.location.pathname;
+            if (path.startsWith('/dissolution/') && path.length > 13) {
+                const projectName = path.replace('/dissolution/', '').replace(/\/$/, '');
+                if (projectName) {
+                    const pdfUrl = `https://qnmnqowpslawelmkgizr.supabase.co/storage/v1/object/public/pdfs/dissolution/${projectName}.pdf`;
+                    document.body.innerHTML = `<div class="h-screen w-screen flex flex-col items-center justify-center bg-[#f8fafc] text-slate-500"><i data-feather="loader" class="w-10 h-10 animate-spin mb-4 text-emerald-600"></i><p class="font-bold text-xl">Loading Document...</p></div>`;
+                    feather.replace();
+                    window.location.replace(pdfUrl);
+                    return;
+                }
+            }
+
+            feather.replace(); 
             showPage('main'); // call to populate stats on load
         });
     </script>
