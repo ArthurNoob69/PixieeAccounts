@@ -11,7 +11,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://unpkg.com/feather-icons"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -339,9 +338,9 @@
                     </div>
                 </div>
                 <div class="flex gap-3 w-full lg:w-auto">
-                    <button onclick="saveDissToCloud()" id="btn-export-pdf"
+                    <button onclick="exportDissPdf()"
                         class="w-full lg:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"><i
-                            data-feather="cloud" class="w-4 h-4"></i> Save & Share</button>
+                            data-feather="download" class="w-4 h-4"></i> Export PDF</button>
                 </div>
             </div>
 
@@ -737,92 +736,85 @@
             currDiss.title = val; saveDiss();
         }
 
-        async function saveDissToCloud() {
+        function exportDissPdf() {
             if (!currDiss) return;
-            
-            const btn = document.getElementById('btn-export-pdf');
-            btn.innerHTML = `<i data-feather="loader" class="w-4 h-4 animate-spin"></i> Saving...`;
-            feather.replace();
-            
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('landscape');
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape');
 
-                let startY = 20;
+            let startY = 20;
+            
+            currDiss.accounts.forEach((acc, idx) => {
+                if (idx > 0) {
+                    doc.addPage();
+                    startY = 20;
+                }
+
+                doc.setFontSize(16);
+                doc.setTextColor(30, 41, 59);
+                doc.text(currDiss.title + ' - ' + acc.name, 14, startY);
+                startY += 10;
+
+                let head = [];
+                let body = [];
                 
-                currDiss.accounts.forEach((acc, idx) => {
-                    if (idx > 0) {
-                        doc.addPage();
-                        startY = 20;
+                if (acc.type === 'standard') {
+                    head = [['Particulars (DR)', 'Details', 'Amount', 'Particulars (CR)', 'Details', 'Amount']];
+                    const rows = Math.max(acc.dr.length, acc.cr.length);
+                    for (let i = 0; i < rows; i++) {
+                        const dr = acc.dr[i] || { p: '', d: '', a: '' };
+                        const cr = acc.cr[i] || { p: '', d: '', a: '' };
+                        body.push([dr.p, dr.d, dr.a, cr.p, cr.d, cr.a]);
                     }
-
-                    doc.setFontSize(16);
-                    doc.setTextColor(30, 41, 59);
-                    doc.text(currDiss.title + ' - ' + acc.name, 14, startY);
-                    startY += 10;
-
-                    let head = [];
-                    let body = [];
+                } else {
+                    const p = currDiss.partners;
+                    let pHeads = []; p.forEach(x => pHeads.push(x));
+                    head = [['Particulars (DR)', ...pHeads, 'Particulars (CR)', ...pHeads]];
                     
-                    if (acc.type === 'standard') {
-                        head = [['Particulars (DR)', 'Details', 'Amount', 'Particulars (CR)', 'Details', 'Amount']];
-                        const rows = Math.max(acc.dr.length, acc.cr.length);
-                        for (let i = 0; i < rows; i++) {
-                            const dr = acc.dr[i] || { p: '', d: '', a: '' };
-                            const cr = acc.cr[i] || { p: '', d: '', a: '' };
-                            body.push([dr.p, dr.d, dr.a, cr.p, cr.d, cr.a]);
-                        }
-                    } else {
-                        const p = currDiss.partners;
-                        let pHeads = []; p.forEach(x => pHeads.push(x));
-                        head = [['Particulars (DR)', ...pHeads, 'Particulars (CR)', ...pHeads]];
-                        
-                        const rows = Math.max(acc.dr.length, acc.cr.length);
-                        for (let i = 0; i < rows; i++) {
-                            const dr = acc.dr[i] || { p: '', amts: Array(p.length).fill('') };
-                            const cr = acc.cr[i] || { p: '', amts: Array(p.length).fill('') };
-                            let row = [dr.p, ...dr.amts, cr.p, ...cr.amts];
-                            body.push(row);
-                        }
+                    const rows = Math.max(acc.dr.length, acc.cr.length);
+                    for (let i = 0; i < rows; i++) {
+                        const dr = acc.dr[i] || { p: '', amts: Array(p.length).fill('') };
+                        const cr = acc.cr[i] || { p: '', amts: Array(p.length).fill('') };
+                        let row = [dr.p, ...dr.amts, cr.p, ...cr.amts];
+                        body.push(row);
                     }
+                }
 
-                    doc.autoTable({
-                        startY: startY,
-                        head: head,
-                        body: body,
-                        theme: 'grid',
-                        styles: { fontSize: 9, cellPadding: 2 },
-                        headStyles: { fillColor: [59, 130, 246] }
-                    });
+                doc.autoTable({
+                    startY: startY,
+                    head: head,
+                    body: body,
+                    theme: 'grid',
+                    styles: { fontSize: 9, cellPadding: 2 },
+                    headStyles: { fillColor: [59, 130, 246] }
                 });
-                const pdfBlob = doc.output('blob');
-                
-                // Use a sanitized project title for the URL
-                const sanitizedTitle = currDiss.title.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
-                const fileName = `dissolution/${sanitizedTitle}.pdf`;
-                
-                const { data, error } = await supabaseClient.storage.from('pdfs').upload(fileName, pdfBlob, {
-                    contentType: 'application/pdf',
-                    upsert: true
-                });
-                
-                if (error) throw error;
-                
-                // Construct the custom share URL exactly as requested
-                const shareUrl = `https://accounts.pixiee.in/dissolution/${sanitizedTitle}`;
-                
-                window.open(shareUrl, '_blank');
-                
-                // Show a mini notification or alert
-                alert('Saved successfully! PDF link opened in new tab.\n\nShare link: ' + shareUrl);
+            });
 
-            } catch (err) {
-                console.error(err);
-                alert('Failed to save to cloud. Please check console.');
-            } finally {
-                btn.innerHTML = `<i data-feather="cloud" class="w-4 h-4"></i> Save & Share`;
-                feather.replace();
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setTextColor(230, 230, 230);
+                doc.setFontSize(60);
+                doc.text("Pixiee Accounts", 148, 105, { align: "center", angle: 45 });
             }
+
+            doc.addPage();
+            doc.setTextColor(30, 41, 59);
+            doc.setFontSize(24);
+            doc.setFont('helvetica', 'bold');
+            doc.text("About Pixiee Accounts", 148, 50, { align: "center" });
+
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'normal');
+            const aboutText = "Pixiee Accounts is a professional-grade accounting and reconciliation platform built for speed and clarity.\n\n" +
+            "Manage dissolution, bank reconciliation, and bill of exchange workflows effortlessly.\n\n" + 
+            "Visit us at: accounts.pixiee.in\n\n" + 
+            "Thank you for trusting Pixiee Accounts for your financial management.";
+
+            const splitText = doc.splitTextToSize(aboutText, 200);
+            doc.text(splitText, 148, 80, { align: "center", lineHeightFactor: 1.5 });
+
+            // TODO: Upload to Supabase Cloud Storage instead of downloading when user provides keys
+            doc.save(`${currDiss.title.replace(/\s+/g, '_')}_Dissolution.pdf`);
         }
 
         function renderDissTabs() {
@@ -1365,30 +1357,9 @@
             disp.textContent = calcVal;
         }
 
-        // ==========================================
-        // SUPABASE CLIENT
-        // ==========================================
-        const supabaseClient = window.supabase.createClient(
-            'https://qnmnqowpslawelmkgizr.supabase.co', 
-            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFubW5xb3dwc2xhd2VsbWtnaXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyOTY5MTQsImV4cCI6MjEwNDg3MjkxNH0.0VLwH6A9W4xadIYWCLK0ngkgWdHQarYIUGYcyJ5jeEU'
-        );
-
         // Init
-        document.addEventListener('DOMContentLoaded', () => { 
-            // Handle custom URL routing for PDF share links
-            const path = window.location.pathname;
-            if (path.startsWith('/dissolution/') && path.length > 13) {
-                const projectName = path.replace('/dissolution/', '').replace(/\/$/, '');
-                if (projectName) {
-                    const pdfUrl = `https://qnmnqowpslawelmkgizr.supabase.co/storage/v1/object/public/pdfs/dissolution/${projectName}.pdf`;
-                    document.body.innerHTML = `<div class="h-screen w-screen flex flex-col items-center justify-center bg-[#f8fafc] text-slate-500"><i data-feather="loader" class="w-10 h-10 animate-spin mb-4 text-emerald-600"></i><p class="font-bold text-xl">Loading Document...</p></div>`;
-                    feather.replace();
-                    window.location.replace(pdfUrl);
-                    return;
-                }
-            }
-
-            feather.replace(); 
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
             showPage('main'); // call to populate stats on load
         });
     </script>
