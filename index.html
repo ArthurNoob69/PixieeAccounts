@@ -795,33 +795,11 @@
                         headStyles: { fillColor: [59, 130, 246] }
                     });
                 });
-
-                const pageCount = doc.internal.getNumberOfPages();
-                for (let i = 1; i <= pageCount; i++) {
-                    doc.setPage(i);
-                    doc.setTextColor(230, 230, 230);
-                    doc.setFontSize(60);
-                    doc.text("Pixiee Accounts", 148, 105, { align: "center", angle: 45 });
-                }
-
-                doc.addPage();
-                doc.setTextColor(30, 41, 59);
-                doc.setFontSize(24);
-                doc.setFont('helvetica', 'bold');
-                doc.text("About Pixiee Accounts", 148, 50, { align: "center" });
-
-                doc.setFontSize(14);
-                doc.setFont('helvetica', 'normal');
-                const aboutText = "Pixiee Accounts is a professional-grade accounting and reconciliation platform built for speed and clarity.\n\n" +
-                "Manage dissolution, bank reconciliation, and bill of exchange workflows effortlessly.\n\n" + 
-                "Visit us at: accounts.pixiee.in\n\n" + 
-                "Thank you for trusting Pixiee Accounts for your financial management.";
-
-                const splitText = doc.splitTextToSize(aboutText, 200);
-                doc.text(splitText, 148, 80, { align: "center", lineHeightFactor: 1.5 });
-
                 const pdfBlob = doc.output('blob');
-                const fileName = `dissolution/${currDiss.id}.pdf`;
+                
+                // Use a sanitized project title for the URL
+                const sanitizedTitle = currDiss.title.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
+                const fileName = `dissolution/${sanitizedTitle}.pdf`;
                 
                 const { data, error } = await supabaseClient.storage.from('pdfs').upload(fileName, pdfBlob, {
                     contentType: 'application/pdf',
@@ -830,12 +808,13 @@
                 
                 if (error) throw error;
                 
-                const { data: { publicUrl } } = supabaseClient.storage.from('pdfs').getPublicUrl(fileName);
+                // Construct the custom share URL exactly as requested
+                const shareUrl = `https://accounts.pixiee.in/dissolution/${sanitizedTitle}`;
                 
-                window.open(publicUrl, '_blank');
+                window.open(shareUrl, '_blank');
                 
                 // Show a mini notification or alert
-                alert('Saved successfully! PDF link opened in new tab.\n\nShare link: ' + publicUrl);
+                alert('Saved successfully! PDF link opened in new tab.\n\nShare link: ' + shareUrl);
 
             } catch (err) {
                 console.error(err);
