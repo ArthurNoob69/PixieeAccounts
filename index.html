@@ -823,14 +823,14 @@
                 const pdfBlob = doc.output('blob');
                 const fileName = `dissolution/${currDiss.id}.pdf`;
                 
-                const { data, error } = await supabase.storage.from('pdfs').upload(fileName, pdfBlob, {
+                const { data, error } = await supabaseClient.storage.from('pdfs').upload(fileName, pdfBlob, {
                     contentType: 'application/pdf',
                     upsert: true
                 });
                 
                 if (error) throw error;
                 
-                const { data: { publicUrl } } = supabase.storage.from('pdfs').getPublicUrl(fileName);
+                const { data: { publicUrl } } = supabaseClient.storage.from('pdfs').getPublicUrl(fileName);
                 
                 window.open(publicUrl, '_blank');
                 
@@ -1389,7 +1389,7 @@
         // ==========================================
         // SUPABASE CLIENT
         // ==========================================
-        const supabase = window.supabase.createClient(
+        const supabaseClient = window.supabase.createClient(
             'https://qnmnqowpslawelmkgizr.supabase.co', 
             'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFubW5xb3dwc2xhd2VsbWtnaXpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkyOTY5MTQsImV4cCI6MjEwNDg3MjkxNH0.0VLwH6A9W4xadIYWCLK0ngkgWdHQarYIUGYcyJ5jeEU'
         );
