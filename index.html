@@ -338,7 +338,7 @@
                     </div>
                 </div>
                 <div class="flex gap-3 w-full lg:w-auto">
-                    <button onclick="exportDissPdf()"
+                    <button onclick="exportDissPdf()" id="btn-export-pdf"
                         class="w-full lg:w-auto bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"><i
                             data-feather="download" class="w-4 h-4"></i> Export PDF</button>
                 </div>
@@ -736,10 +736,17 @@
             currDiss.title = val; saveDiss();
         }
 
-        function exportDissPdf() {
+        async function exportDissPdf() {
             if (!currDiss) return;
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('landscape');
+            const btn = document.getElementById('btn-export-pdf');
+            if (btn) {
+                btn.innerHTML = `<i data-feather="loader" class="w-4 h-4 animate-spin"></i> Saving...`;
+                feather.replace();
+            }
+
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('landscape');
 
             let startY = 20;
             
@@ -813,8 +820,37 @@
             const splitText = doc.splitTextToSize(aboutText, 200);
             doc.text(splitText, 148, 80, { align: "center", lineHeightFactor: 1.5 });
 
-            // TODO: Upload to Supabase Cloud Storage instead of downloading when user provides keys
-            doc.save(`${currDiss.title.replace(/\s+/g, '_')}_Dissolution.pdf`);
+            // Convert to base64
+            const dataUri = doc.output('datauristring');
+            const base64Str = dataUri.split(',')[1];
+            
+            const sanitizedTitle = currDiss.title.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
+            const filename = `${sanitizedTitle}_dissolution`; // Without extension, the API adds it
+
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename, contentBase64: base64Str })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to upload PDF');
+            }
+
+            const data = await response.json();
+            alert('Saved successfully!\n\nLink: ' + data.url);
+            window.open(data.url, '_blank');
+
+            } catch (error) {
+                console.error('Error saving PDF:', error);
+                alert('Error: ' + error.message);
+            } finally {
+                if (btn) {
+                    btn.innerHTML = `<i data-feather="download" class="w-4 h-4"></i> Export PDF`;
+                    feather.replace();
+                }
+            }
         }
 
         function renderDissTabs() {
