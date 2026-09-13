@@ -962,9 +962,9 @@
                     html += `<tr class="transition-all">`;
                     if (dr) {
                         html += `<td class="bg-slate-50 align-middle border-r border-slate-200" ${getShadow(dr)}>${actsHtml('dr', i)}</td>
-                        <td ${getShadow(dr)}><input class="ac-input font-medium" value="${dr.p}" onchange="updDiss('dr',${i},'p',this.value)"></td>
-                        <td ${getShadow(dr)}><input type="number" class="ac-amt-input !text-slate-500" value="${dr.d}" onchange="updDiss('dr',${i},'d',this.value)"></td>
-                        <td ${getShadow(dr)}><input type="number" class="ac-amt-input font-bold" value="${dr.a}" onchange="updDiss('dr',${i},'a',this.value)"></td>`;
+                        <td ${getShadow(dr)}><input class="ac-input font-medium" value="${dr.p}" onchange="updDiss('dr',${i},'p',this.value)" id="dr-p-${i}"></td>
+                        <td ${getShadow(dr)}><input type="number" class="ac-amt-input !text-slate-500" value="${dr.d}" onchange="updDiss('dr',${i},'d',this.value)" id="dr-d-${i}"></td>
+                        <td ${getShadow(dr)}><input type="number" class="ac-amt-input font-bold" value="${dr.a}" onchange="updDiss('dr',${i},'a',this.value)" id="dr-a-${i}"></td>`;
                     } else {
                         html += `<td class="bg-slate-50 align-middle border-r border-slate-200">
                                     <div class="flex justify-center p-1"><button onclick="insertDissRow('dr', ${acc.dr.length})" class="text-slate-400 hover:text-emerald-600" title="Add Row"><i data-feather="plus" class="w-3 h-3"></i></button></div>
@@ -973,9 +973,9 @@
                     }
                     if (cr) {
                         html += `<td class="border-divider bg-slate-50 align-middle border-r border-slate-200" ${getShadow(cr)}>${actsHtml('cr', i)}</td>
-                        <td ${getShadow(cr)}><input class="ac-input font-medium" value="${cr.p}" onchange="updDiss('cr',${i},'p',this.value)"></td>
-                        <td ${getShadow(cr)}><input type="number" class="ac-amt-input !text-slate-500" value="${cr.d}" onchange="updDiss('cr',${i},'d',this.value)"></td>
-                        <td ${getShadow(cr)}><input type="number" class="ac-amt-input font-bold" value="${cr.a}" onchange="updDiss('cr',${i},'a',this.value)"></td>`;
+                        <td ${getShadow(cr)}><input class="ac-input font-medium" value="${cr.p}" onchange="updDiss('cr',${i},'p',this.value)" id="cr-p-${i}"></td>
+                        <td ${getShadow(cr)}><input type="number" class="ac-amt-input !text-slate-500" value="${cr.d}" onchange="updDiss('cr',${i},'d',this.value)" id="cr-d-${i}"></td>
+                        <td ${getShadow(cr)}><input type="number" class="ac-amt-input font-bold" value="${cr.a}" onchange="updDiss('cr',${i},'a',this.value)" id="cr-a-${i}"></td>`;
                     } else {
                         html += `<td class="border-divider bg-slate-50 align-middle border-r border-slate-200">
                                     <div class="flex justify-center p-1"><button onclick="insertDissRow('cr', ${acc.cr.length})" class="text-slate-400 hover:text-emerald-600" title="Add Row"><i data-feather="plus" class="w-3 h-3"></i></button></div>
@@ -1015,8 +1015,8 @@
                     html += `<tr class="transition-all">`;
                     if (dr) {
                         html += `<td class="bg-slate-50 align-middle border-r border-slate-200">${actsHtml('dr', i)}</td>
-                                 <td><input class="ac-input font-medium" value="${dr.p}" onchange="updDissCap('dr',${i},'p',0,this.value)"></td>`;
-                        p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${dr.amts[pIdx] || ''}" onchange="updDissCap('dr',${i},'a',${pIdx},this.value)" id="dr-cap-${i}-${pIdx}"></td>`; });
+                                 <td><input class="ac-input font-medium" value="${dr.p}" onchange="updDissCap('dr',${i},'p',0,this.value)" id="dr-cap-p-${i}"></td>`;
+                        p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${dr.amts[pIdx] || ''}" onchange="updDissCap('dr',${i},'a',${pIdx},this.value)" id="dr-cap-a-${i}-${pIdx}"></td>`; });
                     } else {
                         html += `<td class="bg-slate-50 align-middle border-r border-slate-200"><div class="flex justify-center p-1"><button onclick="insertDissRow('dr', ${acc.dr.length})" class="text-slate-400 hover:text-emerald-600" title="Add Row"><i data-feather="plus" class="w-3 h-3"></i></button></div></td>
                                  <td></td>`;
@@ -1025,8 +1025,8 @@
                     
                     if (cr) {
                         html += `<td class="border-divider bg-slate-50 align-middle border-r border-slate-200">${actsHtml('cr', i)}</td>
-                                 <td><input class="ac-input font-medium" value="${cr.p}" onchange="updDissCap('cr',${i},'p',0,this.value)"></td>`;
-                        p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${cr.amts[pIdx] || ''}" onchange="updDissCap('cr',${i},'a',${pIdx},this.value)" id="cr-cap-${i}-${pIdx}"></td>`; });
+                                 <td><input class="ac-input font-medium" value="${cr.p}" onchange="updDissCap('cr',${i},'p',0,this.value)" id="cr-cap-p-${i}"></td>`;
+                        p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${cr.amts[pIdx] || ''}" onchange="updDissCap('cr',${i},'a',${pIdx},this.value)" id="cr-cap-a-${i}-${pIdx}"></td>`; });
                     } else {
                         html += `<td class="border-divider bg-slate-50 align-middle border-r border-slate-200"><div class="flex justify-center p-1"><button onclick="insertDissRow('cr', ${acc.cr.length})" class="text-slate-400 hover:text-emerald-600" title="Add Row"><i data-feather="plus" class="w-3 h-3"></i></button></div></td>
                                  <td></td>`;
@@ -1105,8 +1105,41 @@
                 }
             });
         }
+
+        function syncDissDOM() {
+            const acc = currDiss.accounts[activeAccIdx];
+            if (acc.type !== 'standard') return;
+            ['dr', 'cr'].forEach(side => {
+                for (let i = 0; i < acc[side].length; i++) {
+                    const elA = document.getElementById(`${side}-a-${i}`);
+                    if (elA) elA.value = acc[side][i].a !== undefined ? acc[side][i].a : '';
+                    const elD = document.getElementById(`${side}-d-${i}`);
+                    if (elD) elD.value = acc[side][i].d !== undefined ? acc[side][i].d : '';
+                    const elP = document.getElementById(`${side}-p-${i}`);
+                    if (elP) elP.value = acc[side][i].p !== undefined ? acc[side][i].p : '';
+                }
+            });
+            calcTotals();
+        }
+
+        function updDiss(side, r, f, v) {
+            if (f === 'p' && v.trim() !== '') {
+                if (side === 'dr' && !v.toLowerCase().startsWith('to ')) v = 'To ' + v.trim();
+                if (side === 'cr' && !v.toLowerCase().startsWith('by ')) v = 'By ' + v.trim();
+                document.getElementById(`${side}-p-${r}`).value = v;
+            }
+            currDiss.accounts[activeAccIdx][side][r][f] = v;
+            if (f === 'd' || f === 'p') autoSumDetails();
+            saveDiss();
+            syncDissDOM();
+        }
         
         function updDissCap(side, r, f, pIdx, v) {
+            if (f === 'p' && v.trim() !== '') {
+                if (side === 'dr' && !v.toLowerCase().startsWith('to ')) v = 'To ' + v.trim();
+                if (side === 'cr' && !v.toLowerCase().startsWith('by ')) v = 'By ' + v.trim();
+                document.getElementById(`${side}-cap-p-${r}`).value = v;
+            }
             if (f === 'p') {
                 currDiss.accounts[activeAccIdx][side][r].p = v;
             } else if (f === 'a') {
