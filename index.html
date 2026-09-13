@@ -1029,6 +1029,11 @@
         }
         
         function updDissCap(side, r, f, pIdx, v) {
+            if (f === 'p') {
+                currDiss.accounts[activeAccIdx][side][r].p = v;
+            } else if (f === 'a') {
+                currDiss.accounts[activeAccIdx][side][r].amts[pIdx] = v;
+            }
             saveDiss(); if (f === 'a') calcTotals();
         }
 
