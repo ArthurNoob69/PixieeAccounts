@@ -736,6 +736,87 @@
             currDiss.title = val; saveDiss();
         }
 
+        function exportDissPdf() {
+            if (!currDiss) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape');
+
+            let startY = 20;
+            
+            currDiss.accounts.forEach((acc, idx) => {
+                if (idx > 0) {
+                    doc.addPage();
+                    startY = 20;
+                }
+
+                doc.setFontSize(16);
+                doc.setTextColor(30, 41, 59);
+                doc.text(currDiss.title + ' - ' + acc.name, 14, startY);
+                startY += 10;
+
+                let head = [];
+                let body = [];
+                
+                if (acc.type === 'standard') {
+                    head = [['Particulars (DR)', 'Details', 'Amount', 'Particulars (CR)', 'Details', 'Amount']];
+                    const rows = Math.max(acc.dr.length, acc.cr.length);
+                    for (let i = 0; i < rows; i++) {
+                        const dr = acc.dr[i] || { p: '', d: '', a: '' };
+                        const cr = acc.cr[i] || { p: '', d: '', a: '' };
+                        body.push([dr.p, dr.d, dr.a, cr.p, cr.d, cr.a]);
+                    }
+                } else {
+                    const p = currDiss.partners;
+                    let pHeads = []; p.forEach(x => pHeads.push(x));
+                    head = [['Particulars (DR)', ...pHeads, 'Particulars (CR)', ...pHeads]];
+                    
+                    const rows = Math.max(acc.dr.length, acc.cr.length);
+                    for (let i = 0; i < rows; i++) {
+                        const dr = acc.dr[i] || { p: '', amts: Array(p.length).fill('') };
+                        const cr = acc.cr[i] || { p: '', amts: Array(p.length).fill('') };
+                        let row = [dr.p, ...dr.amts, cr.p, ...cr.amts];
+                        body.push(row);
+                    }
+                }
+
+                doc.autoTable({
+                    startY: startY,
+                    head: head,
+                    body: body,
+                    theme: 'grid',
+                    styles: { fontSize: 9, cellPadding: 2 },
+                    headStyles: { fillColor: [59, 130, 246] }
+                });
+            });
+
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setTextColor(230, 230, 230);
+                doc.setFontSize(60);
+                doc.text("Pixiee Accounts", 148, 105, { align: "center", angle: 45 });
+            }
+
+            doc.addPage();
+            doc.setTextColor(30, 41, 59);
+            doc.setFontSize(24);
+            doc.setFont('helvetica', 'bold');
+            doc.text("About Pixiee Accounts", 148, 50, { align: "center" });
+
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'normal');
+            const aboutText = "Pixiee Accounts is a professional-grade accounting and reconciliation platform built for speed and clarity.\n\n" +
+            "Manage dissolution, bank reconciliation, and bill of exchange workflows effortlessly.\n\n" + 
+            "Visit us at: accounts.pixiee.in\n\n" + 
+            "Thank you for trusting Pixiee Accounts for your financial management.";
+
+            const splitText = doc.splitTextToSize(aboutText, 200);
+            doc.text(splitText, 148, 80, { align: "center", lineHeightFactor: 1.5 });
+
+            // TODO: Upload to Supabase Cloud Storage instead of downloading when user provides keys
+            doc.save(`${currDiss.title.replace(/\s+/g, '_')}_Dissolution.pdf`);
+        }
+
         function renderDissTabs() {
             const cont = document.getElementById('diss-tabs');
             cont.innerHTML = '';
