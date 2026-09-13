@@ -791,6 +791,40 @@
             saveDiss(); renderDissLedger();
         }
 
+        let dragSourceIdx = null;
+        function dragDissRow(ev, idx) {
+            dragSourceIdx = idx;
+            ev.dataTransfer.effectAllowed = "move";
+            ev.dataTransfer.setData("text/plain", idx);
+            setTimeout(() => { if (ev.target.tagName === 'TR') ev.target.style.opacity = '0.4'; }, 0);
+        }
+        function allowDropDissRow(ev) {
+            ev.preventDefault();
+            ev.dataTransfer.dropEffect = "move";
+            let tr = ev.target.closest('tr');
+            if (tr && tr.parentNode.tagName === 'TBODY') tr.style.borderTop = "3px solid #3b82f6";
+        }
+        function dragLeaveDissRow(ev) {
+            let tr = ev.target.closest('tr');
+            if (tr && tr.parentNode.tagName === 'TBODY') tr.style.borderTop = "";
+        }
+        function dragEndDissRow(ev) {
+            if (ev.target.tagName === 'TR') ev.target.style.opacity = '1';
+            document.querySelectorAll('#diss-ledger-container tr').forEach(tr => tr.style.borderTop = "");
+        }
+        function dropDissRow(ev, targetIdx) {
+            ev.preventDefault();
+            document.querySelectorAll('#diss-ledger-container tr').forEach(tr => tr.style.borderTop = "");
+            if (dragSourceIdx === null || dragSourceIdx === targetIdx) return;
+            const acc = currDiss.accounts[activeAccIdx];
+            const drItem = acc.dr.splice(dragSourceIdx, 1)[0];
+            const crItem = acc.cr.splice(dragSourceIdx, 1)[0];
+            acc.dr.splice(targetIdx, 0, drItem);
+            acc.cr.splice(targetIdx, 0, crItem);
+            dragSourceIdx = null;
+            saveDiss(); renderDissLedger();
+        }
+
         // Export Function
         function exportDissPdf() {
             if (!currDiss) return;
@@ -925,7 +959,7 @@
 
                 html += `
                     <thead>
-                        <tr><th colspan="3">DR</th><th colspan="3" class="border-divider">CR</th><th rowspan="2" class="w-10 bg-slate-50 border-divider"></th></tr>
+                        <tr><th colspan="3">DR</th><th colspan="3" class="border-divider">CR</th><th rowspan="2" class="w-16 bg-slate-50 border-divider"></th></tr>
                         <tr><th class="w-64">Particulars</th><th class="w-28">Details (₹)</th><th class="w-32">Amount (₹)</th><th class="w-64 border-divider">Particulars</th><th class="w-28">Details (₹)</th><th class="w-32">Amount (₹)</th></tr>
                     </thead>
                     <tbody>
@@ -933,15 +967,18 @@
                 const rows = Math.max(acc.dr.length, acc.cr.length);
                 for (let i = 0; i < rows; i++) {
                     const dr = acc.dr[i] || { p: '', d: '', a: '' }; const cr = acc.cr[i] || { p: '', d: '', a: '' };
-                    html += `<tr>
+                    html += `<tr draggable="true" ondragstart="dragDissRow(event, ${i})" ondragover="allowDropDissRow(event)" ondragleave="dragLeaveDissRow(event)" ondragend="dragEndDissRow(event)" ondrop="dropDissRow(event, ${i})" class="transition-all">
                         <td ${getShadow(dr)}><input class="ac-input font-medium" value="${dr.p}" onchange="updDiss('dr',${i},'p',this.value)"></td>
                         <td ${getShadow(dr)}><input type="number" class="ac-amt-input !text-slate-500" value="${dr.d}" onchange="updDiss('dr',${i},'d',this.value)"></td>
                         <td ${getShadow(dr)}><input type="number" class="ac-amt-input font-bold" value="${dr.a}" onchange="updDiss('dr',${i},'a',this.value)"></td>
                         <td class="border-divider" ${getShadow(cr)}><input class="ac-input font-medium" value="${cr.p}" onchange="updDiss('cr',${i},'p',this.value)"></td>
                         <td ${getShadow(cr)}><input type="number" class="ac-amt-input !text-slate-500" value="${cr.d}" onchange="updDiss('cr',${i},'d',this.value)"></td>
                         <td ${getShadow(cr)}><input type="number" class="ac-amt-input font-bold" value="${cr.a}" onchange="updDiss('cr',${i},'a',this.value)"></td>
-                        <td class="border-divider text-center bg-slate-50 hover:bg-slate-100 cursor-pointer" onclick="insertDissRow(${i + 1})" title="Insert Row Below">
-                            <i data-feather="plus" class="w-4 h-4 mx-auto text-emerald-500"></i>
+                        <td class="border-divider bg-slate-50 text-center align-middle">
+                            <div class="flex items-center justify-center gap-1.5 px-1 py-1">
+                                <button class="cursor-grab text-slate-400 hover:text-slate-700 active:cursor-grabbing" title="Drag to Move"><i data-feather="menu" class="w-4 h-4 pointer-events-none"></i></button>
+                                <button onclick="insertDissRow(${i + 1})" title="Insert Row Below" class="text-emerald-400 hover:text-emerald-600"><i data-feather="plus-circle" class="w-4 h-4 pointer-events-none"></i></button>
+                            </div>
                         </td>
                     </tr>`;
                 }
@@ -958,7 +995,7 @@
                 const pHeaders = p.map(x => `<th class="w-28">${x} (₹)</th>`).join('');
                 html += `
                     <thead>
-                        <tr><th colspan="${1 + p.length}">DR</th><th colspan="${1 + p.length}" class="border-divider">CR</th><th rowspan="2" class="w-10 bg-slate-50 border-divider"></th></tr>
+                        <tr><th colspan="${1 + p.length}">DR</th><th colspan="${1 + p.length}" class="border-divider">CR</th><th rowspan="2" class="w-16 bg-slate-50 border-divider"></th></tr>
                         <tr><th class="w-64">Particulars</th>${pHeaders}<th class="w-64 border-divider">Particulars</th>${pHeaders}</tr>
                     </thead>
                     <tbody>
@@ -967,12 +1004,15 @@
                 for (let i = 0; i < rows; i++) {
                     const dr = acc.dr[i] || { p: '', amts: Array(p.length).fill('') };
                     const cr = acc.cr[i] || { p: '', amts: Array(p.length).fill('') };
-                    html += `<tr><td><input class="ac-input font-medium" value="${dr.p}" onchange="updDissCap('dr',${i},'p',0,this.value)"></td>`;
+                    html += `<tr draggable="true" ondragstart="dragDissRow(event, ${i})" ondragover="allowDropDissRow(event)" ondragleave="dragLeaveDissRow(event)" ondragend="dragEndDissRow(event)" ondrop="dropDissRow(event, ${i})" class="transition-all"><td><input class="ac-input font-medium" value="${dr.p}" onchange="updDissCap('dr',${i},'p',0,this.value)"></td>`;
                     p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${dr.amts[pIdx] || ''}" onchange="updDissCap('dr',${i},'a',${pIdx},this.value)" id="dr-cap-${i}-${pIdx}"></td>`; });
                     html += `<td class="border-divider"><input class="ac-input font-medium" value="${cr.p}" onchange="updDissCap('cr',${i},'p',0,this.value)"></td>`;
                     p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${cr.amts[pIdx] || ''}" onchange="updDissCap('cr',${i},'a',${pIdx},this.value)" id="cr-cap-${i}-${pIdx}"></td>`; });
-                    html += `<td class="border-divider text-center bg-slate-50 hover:bg-slate-100 cursor-pointer" onclick="insertDissRow(${i + 1})" title="Insert Row Below">
-                        <i data-feather="plus" class="w-4 h-4 mx-auto text-emerald-500"></i>
+                    html += `<td class="border-divider bg-slate-50 text-center align-middle">
+                        <div class="flex items-center justify-center gap-1.5 px-1 py-1">
+                            <button class="cursor-grab text-slate-400 hover:text-slate-700 active:cursor-grabbing" title="Drag to Move"><i data-feather="menu" class="w-4 h-4 pointer-events-none"></i></button>
+                            <button onclick="insertDissRow(${i + 1})" title="Insert Row Below" class="text-emerald-400 hover:text-emerald-600"><i data-feather="plus-circle" class="w-4 h-4 pointer-events-none"></i></button>
+                        </div>
                     </td></tr>`;
                 }
                 html += `<tr class="bg-slate-100 font-bold text-slate-900 text-sm border-t-2 border-t-slate-400"><td class="p-4 text-right uppercase tracking-wider">Total</td>`;
