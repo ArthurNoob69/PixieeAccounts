@@ -779,49 +779,33 @@
             cont.scrollTop = cont.scrollHeight;
         }
 
-        function insertDissRow(index) {
+        function insertDissRow(side, index) {
             const acc = currDiss.accounts[activeAccIdx];
             if (acc.type === 'standard') {
-                acc.dr.splice(index, 0, { p: '', d: '', a: '' });
-                acc.cr.splice(index, 0, { p: '', d: '', a: '' });
+                acc[side].splice(index, 0, { p: '', d: '', a: '' });
             } else {
-                acc.dr.splice(index, 0, { p: '', amts: Array(currDiss.partners.length).fill('') });
-                acc.cr.splice(index, 0, { p: '', amts: Array(currDiss.partners.length).fill('') });
+                acc[side].splice(index, 0, { p: '', amts: Array(currDiss.partners.length).fill('') });
             }
             saveDiss(); renderDissLedger();
         }
 
-        let dragSourceIdx = null;
-        function dragDissRow(ev, idx) {
-            dragSourceIdx = idx;
-            ev.dataTransfer.effectAllowed = "move";
-            ev.dataTransfer.setData("text/plain", idx);
-            setTimeout(() => { if (ev.target.tagName === 'TR') ev.target.style.opacity = '0.4'; }, 0);
-        }
-        function allowDropDissRow(ev) {
-            ev.preventDefault();
-            ev.dataTransfer.dropEffect = "move";
-            let tr = ev.target.closest('tr');
-            if (tr && tr.parentNode.tagName === 'TBODY') tr.style.borderTop = "3px solid #3b82f6";
-        }
-        function dragLeaveDissRow(ev) {
-            let tr = ev.target.closest('tr');
-            if (tr && tr.parentNode.tagName === 'TBODY') tr.style.borderTop = "";
-        }
-        function dragEndDissRow(ev) {
-            if (ev.target.tagName === 'TR') ev.target.style.opacity = '1';
-            document.querySelectorAll('#diss-ledger-container tr').forEach(tr => tr.style.borderTop = "");
-        }
-        function dropDissRow(ev, targetIdx) {
-            ev.preventDefault();
-            document.querySelectorAll('#diss-ledger-container tr').forEach(tr => tr.style.borderTop = "");
-            if (dragSourceIdx === null || dragSourceIdx === targetIdx) return;
+        function removeDissRow(side, index) {
             const acc = currDiss.accounts[activeAccIdx];
-            const drItem = acc.dr.splice(dragSourceIdx, 1)[0];
-            const crItem = acc.cr.splice(dragSourceIdx, 1)[0];
-            acc.dr.splice(targetIdx, 0, drItem);
-            acc.cr.splice(targetIdx, 0, crItem);
-            dragSourceIdx = null;
+            acc[side].splice(index, 1);
+            if (acc[side].length === 0) {
+                if (acc.type === 'standard') acc[side].push({ p: '', d: '', a: '' });
+                else acc[side].push({ p: '', amts: Array(currDiss.partners.length).fill('') });
+            }
+            saveDiss(); renderDissLedger();
+        }
+
+        function moveDissSide(side, index, dir) {
+            const acc = currDiss.accounts[activeAccIdx];
+            const newIndex = index + dir;
+            if (newIndex < 0 || newIndex >= acc[side].length) return;
+            const temp = acc[side][index];
+            acc[side][index] = acc[side][newIndex];
+            acc[side][newIndex] = temp;
             saveDiss(); renderDissLedger();
         }
 
@@ -959,35 +943,52 @@
 
                 html += `
                     <thead>
-                        <tr><th colspan="3">DR</th><th colspan="3" class="border-divider">CR</th><th rowspan="2" class="w-16 bg-slate-50 border-divider"></th></tr>
-                        <tr><th class="w-64">Particulars</th><th class="w-28">Details (₹)</th><th class="w-32">Amount (₹)</th><th class="w-64 border-divider">Particulars</th><th class="w-28">Details (₹)</th><th class="w-32">Amount (₹)</th></tr>
+                        <tr><th colspan="4">DR</th><th colspan="4" class="border-divider">CR</th></tr>
+                        <tr><th class="w-16">Acts</th><th class="w-64">Particulars</th><th class="w-28">Details (₹)</th><th class="w-32">Amount (₹)</th><th class="w-16 border-divider">Acts</th><th class="w-64">Particulars</th><th class="w-28">Details (₹)</th><th class="w-32">Amount (₹)</th></tr>
                     </thead>
                     <tbody>
                 `;
                 const rows = Math.max(acc.dr.length, acc.cr.length);
+                const actsHtml = (side, idx) => `
+                    <div class="flex flex-wrap items-center justify-center gap-1 p-1">
+                        <button onclick="moveDissSide('${side}', ${idx}, -1)" class="text-slate-400 hover:text-blue-600" title="Move Up"><i data-feather="arrow-up" class="w-3 h-3"></i></button>
+                        <button onclick="moveDissSide('${side}', ${idx}, 1)" class="text-slate-400 hover:text-blue-600" title="Move Down"><i data-feather="arrow-down" class="w-3 h-3"></i></button>
+                        <button onclick="insertDissRow('${side}', ${idx + 1})" class="text-slate-400 hover:text-emerald-600" title="Insert Below"><i data-feather="plus" class="w-3 h-3"></i></button>
+                        <button onclick="removeDissRow('${side}', ${idx})" class="text-slate-400 hover:text-rose-600" title="Remove"><i data-feather="trash-2" class="w-3 h-3"></i></button>
+                    </div>`;
+
                 for (let i = 0; i < rows; i++) {
-                    const dr = acc.dr[i] || { p: '', d: '', a: '' }; const cr = acc.cr[i] || { p: '', d: '', a: '' };
-                    html += `<tr draggable="true" ondragstart="dragDissRow(event, ${i})" ondragover="allowDropDissRow(event)" ondragleave="dragLeaveDissRow(event)" ondragend="dragEndDissRow(event)" ondrop="dropDissRow(event, ${i})" class="transition-all">
+                    const dr = acc.dr[i]; const cr = acc.cr[i];
+                    html += `<tr class="transition-all">`;
+                    if (dr) {
+                        html += `<td class="bg-slate-50 align-middle border-r border-slate-200" ${getShadow(dr)}>${actsHtml('dr', i)}</td>
                         <td ${getShadow(dr)}><input class="ac-input font-medium" value="${dr.p}" onchange="updDiss('dr',${i},'p',this.value)"></td>
                         <td ${getShadow(dr)}><input type="number" class="ac-amt-input !text-slate-500" value="${dr.d}" onchange="updDiss('dr',${i},'d',this.value)"></td>
-                        <td ${getShadow(dr)}><input type="number" class="ac-amt-input font-bold" value="${dr.a}" onchange="updDiss('dr',${i},'a',this.value)"></td>
-                        <td class="border-divider" ${getShadow(cr)}><input class="ac-input font-medium" value="${cr.p}" onchange="updDiss('cr',${i},'p',this.value)"></td>
+                        <td ${getShadow(dr)}><input type="number" class="ac-amt-input font-bold" value="${dr.a}" onchange="updDiss('dr',${i},'a',this.value)"></td>`;
+                    } else {
+                        html += `<td class="bg-slate-50 align-middle border-r border-slate-200">
+                                    <div class="flex justify-center p-1"><button onclick="insertDissRow('dr', ${acc.dr.length})" class="text-slate-400 hover:text-emerald-600" title="Add Row"><i data-feather="plus" class="w-3 h-3"></i></button></div>
+                                 </td>
+                                 <td></td><td></td><td></td>`;
+                    }
+                    if (cr) {
+                        html += `<td class="border-divider bg-slate-50 align-middle border-r border-slate-200" ${getShadow(cr)}>${actsHtml('cr', i)}</td>
+                        <td ${getShadow(cr)}><input class="ac-input font-medium" value="${cr.p}" onchange="updDiss('cr',${i},'p',this.value)"></td>
                         <td ${getShadow(cr)}><input type="number" class="ac-amt-input !text-slate-500" value="${cr.d}" onchange="updDiss('cr',${i},'d',this.value)"></td>
-                        <td ${getShadow(cr)}><input type="number" class="ac-amt-input font-bold" value="${cr.a}" onchange="updDiss('cr',${i},'a',this.value)"></td>
-                        <td class="border-divider bg-slate-50 text-center align-middle">
-                            <div class="flex items-center justify-center gap-1.5 px-1 py-1">
-                                <button class="cursor-grab text-slate-400 hover:text-slate-700 active:cursor-grabbing" title="Drag to Move"><i data-feather="menu" class="w-4 h-4 pointer-events-none"></i></button>
-                                <button onclick="insertDissRow(${i + 1})" title="Insert Row Below" class="text-emerald-400 hover:text-emerald-600"><i data-feather="plus-circle" class="w-4 h-4 pointer-events-none"></i></button>
-                            </div>
-                        </td>
-                    </tr>`;
+                        <td ${getShadow(cr)}><input type="number" class="ac-amt-input font-bold" value="${cr.a}" onchange="updDiss('cr',${i},'a',this.value)"></td>`;
+                    } else {
+                        html += `<td class="border-divider bg-slate-50 align-middle border-r border-slate-200">
+                                    <div class="flex justify-center p-1"><button onclick="insertDissRow('cr', ${acc.cr.length})" class="text-slate-400 hover:text-emerald-600" title="Add Row"><i data-feather="plus" class="w-3 h-3"></i></button></div>
+                                 </td>
+                                 <td></td><td></td><td></td>`;
+                    }
+                    html += `</tr>`;
                 }
                 html += `<tr class="bg-slate-100 font-bold text-slate-900 text-sm border-t-2 border-t-slate-400">
-                    <td colspan="2" class="p-4 text-right uppercase tracking-wider">Total</td>
+                    <td colspan="3" class="p-4 text-right uppercase tracking-wider">Total</td>
                     <td class="p-4 text-right font-mono border-b-[6px] border-b-slate-800 border-double text-lg" id="tot-dr">0.00</td>
-                    <td colspan="2" class="p-4 text-right uppercase tracking-wider border-divider">Total</td>
+                    <td colspan="3" class="p-4 text-right uppercase tracking-wider border-divider">Total</td>
                     <td class="p-4 text-right font-mono border-b-[6px] border-b-slate-800 border-double text-lg" id="tot-cr">0.00</td>
-                    <td class="border-divider bg-slate-100"></td>
                 </tr></tbody>`;
             }
             else if (acc.type === 'capital') {
@@ -995,31 +996,49 @@
                 const pHeaders = p.map(x => `<th class="w-28">${x} (₹)</th>`).join('');
                 html += `
                     <thead>
-                        <tr><th colspan="${1 + p.length}">DR</th><th colspan="${1 + p.length}" class="border-divider">CR</th><th rowspan="2" class="w-16 bg-slate-50 border-divider"></th></tr>
-                        <tr><th class="w-64">Particulars</th>${pHeaders}<th class="w-64 border-divider">Particulars</th>${pHeaders}</tr>
+                        <tr><th colspan="${2 + p.length}">DR</th><th colspan="${2 + p.length}" class="border-divider">CR</th></tr>
+                        <tr><th class="w-16">Acts</th><th class="w-64">Particulars</th>${pHeaders}<th class="w-16 border-divider">Acts</th><th class="w-64">Particulars</th>${pHeaders}</tr>
                     </thead>
                     <tbody>
                 `;
                 const rows = Math.max(acc.dr.length, acc.cr.length);
+                const actsHtml = (side, idx) => `
+                    <div class="flex flex-wrap items-center justify-center gap-1 p-1">
+                        <button onclick="moveDissSide('${side}', ${idx}, -1)" class="text-slate-400 hover:text-blue-600" title="Move Up"><i data-feather="arrow-up" class="w-3 h-3"></i></button>
+                        <button onclick="moveDissSide('${side}', ${idx}, 1)" class="text-slate-400 hover:text-blue-600" title="Move Down"><i data-feather="arrow-down" class="w-3 h-3"></i></button>
+                        <button onclick="insertDissRow('${side}', ${idx + 1})" class="text-slate-400 hover:text-emerald-600" title="Insert Below"><i data-feather="plus" class="w-3 h-3"></i></button>
+                        <button onclick="removeDissRow('${side}', ${idx})" class="text-slate-400 hover:text-rose-600" title="Remove"><i data-feather="trash-2" class="w-3 h-3"></i></button>
+                    </div>`;
+
                 for (let i = 0; i < rows; i++) {
-                    const dr = acc.dr[i] || { p: '', amts: Array(p.length).fill('') };
-                    const cr = acc.cr[i] || { p: '', amts: Array(p.length).fill('') };
-                    html += `<tr draggable="true" ondragstart="dragDissRow(event, ${i})" ondragover="allowDropDissRow(event)" ondragleave="dragLeaveDissRow(event)" ondragend="dragEndDissRow(event)" ondrop="dropDissRow(event, ${i})" class="transition-all"><td><input class="ac-input font-medium" value="${dr.p}" onchange="updDissCap('dr',${i},'p',0,this.value)"></td>`;
-                    p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${dr.amts[pIdx] || ''}" onchange="updDissCap('dr',${i},'a',${pIdx},this.value)" id="dr-cap-${i}-${pIdx}"></td>`; });
-                    html += `<td class="border-divider"><input class="ac-input font-medium" value="${cr.p}" onchange="updDissCap('cr',${i},'p',0,this.value)"></td>`;
-                    p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${cr.amts[pIdx] || ''}" onchange="updDissCap('cr',${i},'a',${pIdx},this.value)" id="cr-cap-${i}-${pIdx}"></td>`; });
-                    html += `<td class="border-divider bg-slate-50 text-center align-middle">
-                        <div class="flex items-center justify-center gap-1.5 px-1 py-1">
-                            <button class="cursor-grab text-slate-400 hover:text-slate-700 active:cursor-grabbing" title="Drag to Move"><i data-feather="menu" class="w-4 h-4 pointer-events-none"></i></button>
-                            <button onclick="insertDissRow(${i + 1})" title="Insert Row Below" class="text-emerald-400 hover:text-emerald-600"><i data-feather="plus-circle" class="w-4 h-4 pointer-events-none"></i></button>
-                        </div>
-                    </td></tr>`;
+                    const dr = acc.dr[i]; const cr = acc.cr[i];
+                    html += `<tr class="transition-all">`;
+                    if (dr) {
+                        html += `<td class="bg-slate-50 align-middle border-r border-slate-200">${actsHtml('dr', i)}</td>
+                                 <td><input class="ac-input font-medium" value="${dr.p}" onchange="updDissCap('dr',${i},'p',0,this.value)"></td>`;
+                        p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${dr.amts[pIdx] || ''}" onchange="updDissCap('dr',${i},'a',${pIdx},this.value)" id="dr-cap-${i}-${pIdx}"></td>`; });
+                    } else {
+                        html += `<td class="bg-slate-50 align-middle border-r border-slate-200"><div class="flex justify-center p-1"><button onclick="insertDissRow('dr', ${acc.dr.length})" class="text-slate-400 hover:text-emerald-600" title="Add Row"><i data-feather="plus" class="w-3 h-3"></i></button></div></td>
+                                 <td></td>`;
+                        p.forEach(() => { html += `<td></td>`; });
+                    }
+                    
+                    if (cr) {
+                        html += `<td class="border-divider bg-slate-50 align-middle border-r border-slate-200">${actsHtml('cr', i)}</td>
+                                 <td><input class="ac-input font-medium" value="${cr.p}" onchange="updDissCap('cr',${i},'p',0,this.value)"></td>`;
+                        p.forEach((_, pIdx) => { html += `<td><input type="number" class="ac-amt-input font-bold" value="${cr.amts[pIdx] || ''}" onchange="updDissCap('cr',${i},'a',${pIdx},this.value)" id="cr-cap-${i}-${pIdx}"></td>`; });
+                    } else {
+                        html += `<td class="border-divider bg-slate-50 align-middle border-r border-slate-200"><div class="flex justify-center p-1"><button onclick="insertDissRow('cr', ${acc.cr.length})" class="text-slate-400 hover:text-emerald-600" title="Add Row"><i data-feather="plus" class="w-3 h-3"></i></button></div></td>
+                                 <td></td>`;
+                        p.forEach(() => { html += `<td></td>`; });
+                    }
+                    html += `</tr>`;
                 }
-                html += `<tr class="bg-slate-100 font-bold text-slate-900 text-sm border-t-2 border-t-slate-400"><td class="p-4 text-right uppercase tracking-wider">Total</td>`;
+                html += `<tr class="bg-slate-100 font-bold text-slate-900 text-sm border-t-2 border-t-slate-400"><td colspan="2" class="p-4 text-right uppercase tracking-wider">Total</td>`;
                 p.forEach((_, pIdx) => { html += `<td class="p-4 text-right font-mono border-b-[6px] border-b-slate-800 border-double text-lg" id="tot-dr-cap-${pIdx}">0.00</td>`; });
-                html += `<td class="p-4 text-right uppercase tracking-wider border-divider">Total</td>`;
+                html += `<td colspan="2" class="p-4 text-right uppercase tracking-wider border-divider">Total</td>`;
                 p.forEach((_, pIdx) => { html += `<td class="p-4 text-right font-mono border-b-[6px] border-b-slate-800 border-double text-lg" id="tot-cr-cap-${pIdx}">0.00</td>`; });
-                html += `<td class="border-divider bg-slate-100"></td></tr></tbody>`;
+                html += `</tr></tbody>`;
             }
             html += '</table>';
             cont.innerHTML = html;
